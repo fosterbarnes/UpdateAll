@@ -25,7 +25,7 @@ Run-Task "Updating Windows" {
 }
 
 Run-Task "Updating NVIDIA drivers" {
-    powershell.exe -ExecutionPolicy Bypass -File "C:\Users\Foster\Documents\Powershell Scripts\nvidiaNEW.ps1" # can't detect drivers unless win powershell is used
+    powershell.exe -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "modules\UpdateNvidiaDrivers.ps1") # can't detect drivers unless win powershell is used
 }
 
 Run-Task "Updating Python" { 
@@ -51,9 +51,7 @@ Run-Task "Updating Python" {
     Invoke-WebRequest ($latestPythonURL.href -replace '^/', 'https://www.python.org/') -OutFile $pythonInstallerPath
     Start-Process $pythonInstallerPath -ArgumentList "/passive", "InstallAllUsers=1", "PrependPath=1", "Include_pip=1", "Include_launcher=1", "AssociateFiles=1", "Shortcuts=1", "Include_test=0", "TargetDir=C:\Python" -Wait
 
-    if (Test-Path $pythonInstallerPath) {
-        Remove-Item $pythonInstallerPath -Force
-    }
+    if (Test-Path $pythonInstallerPath) { Remove-Item $pythonInstallerPath -Force }
 }
 
 Run-Task "Updating VSCode" { 
@@ -80,9 +78,7 @@ Run-Task "Updating Cursor" {
     Invoke-WebRequest -Uri $latestCursorVersion.platforms."win32-x64-user" -OutFile $cursorInstallerPath
     Start-Process -FilePath $cursorInstallerPath -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/SP-" -Wait
 
-    if (Test-Path $cursorInstallerPath) {
-        Remove-Item $cursorInstallerPath -Force
-    }
+    if (Test-Path $cursorInstallerPath) { Remove-Item $cursorInstallerPath -Force }
 }
 
 Run-Task "Updating Audacity" {
@@ -101,9 +97,7 @@ Run-Task "Updating Audacity" {
     Invoke-WebRequest -Uri $audacityInstaller.browser_download_url -OutFile $audacityInstallerPath
     Start-Process -FilePath $audacityInstallerPath -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/SP-" -Wait
 
-    if (Test-Path $audacityInstallerPath) {
-        Remove-Item $audacityInstallerPath -Force
-    }
+    if (Test-Path $audacityInstallerPath) { Remove-Item $audacityInstallerPath -Force }
 }
 
 Run-Task "Updating balenaEtcher" {
@@ -132,9 +126,7 @@ Run-Task "Updating balenaEtcher" {
     WaitForProgram "balenaEtcher" && Start-Sleep -Seconds 1.5
     Write-Host "Killing balenaEtcher..." && Stop-Process -Name "balenaEtcher" -Force
 
-    if (Test-Path $etcherInstallerPath) {
-        Remove-Item $etcherInstallerPath -Force
-    }
+    if (Test-Path $etcherInstallerPath) { Remove-Item $etcherInstallerPath -Force }
 }
 
 Run-Task "Updating Bulk Crap Uninstaller" {
@@ -164,14 +156,35 @@ Run-Task "Updating Bulk Crap Uninstaller" {
     Invoke-WebRequest -Uri $bcuPortable.browser_download_url -OutFile $bcuZipPath
     Expand-Archive -Path $bcuZipPath -DestinationPath $bcuDir -Force
 
-    if (Test-Path $bcuZipPath) {
-        Remove-Item $bcuZipPath -Force
-    }
+    if (Test-Path $bcuZipPath) { Remove-Item $bcuZipPath -Force }
 }
 
 # Blender
 # Brave
-# Bridge
+
+Run-Task "Updating Bridge" {
+    $bridgePath = "C:\Program Files\Bridge\Bridge.exe"
+    $currentBridgeVersion = [Version](Get-Item $bridgePath).VersionInfo.FileVersion
+    $latestBridgeRelease = Invoke-RestMethod -Uri "https://api.github.com/repos/Geomitron/Bridge/releases/latest" -Headers @{ 'User-Agent' = 'PowerShell' }
+    $latestBridgeVersion = [Version]$latestBridgeRelease.tag_name.TrimStart("v")
+    $bridgeInstaller = $latestBridgeRelease.assets | Where-Object { $_.name -match "Bridge.*\.exe$" } | Select-Object -First 1
+    $bridgeInstallerPath = Join-Path $env:TEMP "BridgeSetup.exe"
+    
+    if ($currentBridgeVersion -eq $latestBridgeVersion) {
+        Write-Host "Bridge $currentBridgeVersion is already up to date" -ForegroundColor Green
+        return
+    }
+
+    Write-Host "Updating Bridge from $currentBridgeVersion to $latestBridgeVersion"
+    Invoke-WebRequest -Uri $bridgeInstaller.browser_download_url -OutFile $bridgeInstallerPath
+    
+    Start-Process -FilePath $bridgeInstallerPath
+    WaitForProgram "BridgeSetup" && Start-Sleep -Milliseconds 300
+    Start-Process "AutoInstallBridge.lnk" -Wait
+    
+    if (Test-Path $bridgeInstallerPath) { Remove-Item $bridgeInstallerPath -Force }
+}
+
 # Bulk rename utility
 # Chatterino
 # Citra
@@ -237,7 +250,6 @@ Run-Task "Updating Bulk Crap Uninstaller" {
 # TreeSizeFree
 # UVR
 # VLC
-# test
 # VMWare Workstation Pro
 # WinSCP
 
